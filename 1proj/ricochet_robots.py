@@ -9,6 +9,7 @@
 from search import Problem, Node, astar_search, breadth_first_tree_search, \
     depth_first_tree_search, greedy_search
 import sys
+import math
 
 
 class RRState:
@@ -61,13 +62,13 @@ class Board:
         for b, pos in barriers:
             self._set_barrier(b, self.__position_in(pos))
             if b == "u":
-                self._set_barrier(b, self.__position_in((pos[0] - 1, pos[1])))
+                self._set_barrier("d", self.__position_in((pos[0] - 1, pos[1])))
             if b == "d":
-                self._set_barrier(b, self.__position_in((pos[0] + 1, pos[1])))
+                self._set_barrier("u", self.__position_in((pos[0] + 1, pos[1])))
             if b == "l":
-                self._set_barrier(b, self.__position_in((pos[0], pos[1] - 1)))
+                self._set_barrier("r", self.__position_in((pos[0], pos[1] - 1)))
             if b == "r":
-                self._set_barrier(b, self.__position_in((pos[0], pos[1] + 1)))
+                self._set_barrier("l", self.__position_in((pos[0], pos[1] + 1)))
 
     def __position_out(self, position):
         return (position[0] + 1, position[1] + 1)
@@ -109,20 +110,20 @@ class Board:
                 if self._get_robot((x, y)) == robot:
                     return self.__position_out((x, y))
 
-    def _valid_action(self, position, move):
+    def _valid_action(self, position, direction):
         x, y = position
 
-        if move not in self._get_barriers((x, y)):
-            if move == "u" and self._get_robot((x - 1, y)) == None:
+        if direction not in self._get_barriers((x, y)):
+            if direction == "u" and self._get_robot((x - 1, y)) == None:
                 return True
 
-            if move == "d" and self._get_robot((x + 1, y - 1)) == None:
+            if direction == "d" and self._get_robot((x + 1, y)) == None:
                 return True
 
-            if move == "l" and self._get_robot((x, y - 1)) == None:
+            if direction == "l" and self._get_robot((x, y - 1)) == None:
                 return True
 
-            if move == "r" and self._get_robot((x, y + 1)) == None:
+            if direction == "r" and self._get_robot((x, y + 1)) == None:
                 return True
 
         return False
@@ -142,9 +143,9 @@ class Board:
     def robot_action(self, action):
         robot, direction = action
         position = self.__position_in(self.robot_position(robot))
-        position = [position[0], position[1]]
         self._reset_robot(position)
 
+        position = [position[0], position[1]]
         while(self._valid_action(position, direction)):
             if direction == "u":
                 position[0] -= 1
@@ -154,7 +155,7 @@ class Board:
                 position[1] -= 1
             if direction == "r":
                 position[1] += 1
-
+        
         self._set_robot(robot, position)
         position = self.robot_position(robot)
 
@@ -166,7 +167,6 @@ class Board:
 def parse_instance(filename: str) -> Board:
     """ Lê o ficheiro cujo caminho é passado como argumento e retorna
     uma instância da classe Board. """
-    # TODO
     size = 0
     robots = []
     target = None
@@ -233,8 +233,13 @@ class RicochetRobots(Problem):
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
-        #print(node.state)
-        return 1
+        board = node.state.board
+        color, target_pos = board.target
+        robot_pos = board.robot_position(color)
+        
+        return math.sqrt(math.pow((target_pos[0] - robot_pos[0]), 2) + math.pow((target_pos[1] - robot_pos[1]), 2))
+
+
 
 if __name__ == "__main__":
     # TODO:
