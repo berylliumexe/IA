@@ -31,6 +31,7 @@ class Board:
     def __init__(self, size, robots, target, barriers):
         self.size = size
         self.board = []
+        self.target = ()        
 
         #init board
         for x in range(size):
@@ -50,11 +51,12 @@ class Board:
 
         #append robots
         for r, pos in robots:
-            self.board[pos[0] - 1][pos[1] - 1]["robot"] = r
+            self._robot_set_position(r, pos)
         
         #append target
         t, pos = target
         self.board[pos[0] - 1][pos[1] - 1]["target"] = t
+        self.target = target
 
         #append barriers
         for b, pos in barriers:
@@ -69,7 +71,62 @@ class Board:
                 if self.board[x][y]["robot"] == robot:
                     return (x + 1, y + 1)
 
+    def robot_valid_actions(self, robot):
+        """ Devolve as possiveis ações do robô passado como argumento. """
+        actions = []
+
+        r_x, r_y = self.robot_position(robot)
+
+        #try up        
+        if ("u" not in self.board[r_x - 1][r_y - 1]["barriers"]) and ("b" not in self.board[r_x - 2][r_y - 1]["barriers"]) \
+            and (self.board[r_x - 2][r_y - 1]["robot"] == None):
+
+            actions.append((robot, "u"))
+
+        #try bot
+        if ("b" not in self.board[r_x - 1][r_y - 1]["barriers"]) and ("u" not in self.board[r_x][r_y - 2]["barriers"]) \
+            and (self.board[r_x][r_y - 2]["robot"] == None):
+
+            actions.append((robot, "b"))
+
+        #try left
+        if ("l" not in self.board[r_x - 1][r_y - 1]["barriers"]) and ("r" not in self.board[r_x - 1][r_y - 2]["barriers"]) \
+            and (self.board[r_x - 1][r_y - 2]["robot"] == None):
+
+            actions.append((robot, "l"))
+
+        #try right
+        if ("r" not in self.board[r_x - 1][r_y - 1]["barriers"]) and ("l" not in self.board[r_x - 1][r_y]["barriers"]) \
+            and (self.board[r_x - 1][r_y]["robot"] == None):
+
+            actions.append((robot, "r"))
+        
+        return actions
+
+    def _robot_set_position(self, robot, position):
+        x, y = position
+        self.board[x - 1][y - 1]["robot"] = robot
+    
+    def _robot_reset_position(self, position):
+        x, y = position
+        self.board[x - 1][y - 1]["robot"] = None
+    
+    def robot_action(self, action):
+        robot, pos = action
+
+        self._robot_reset_position(self.robot_position(robot))
+        self._robot_set_position(robot, pos)
+
+    """
+    def end(self):
+        self._robot_reset_position(self.robot_position(self.target[0]))
+        self._robot_set_position(*self.target)
+
+    def end_check(self):
+        robot_pos = self.robot_position(self.target[0])
+    """
     # TODO: outros metodos da classe
+
 
 
 def parse_instance(filename: str) -> Board:
@@ -107,29 +164,41 @@ def parse_instance(filename: str) -> Board:
 class RicochetRobots(Problem):
     def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
-        self.initial = board
-        self.goal = None
+        self.initial = RRState(board)
+
+        #self.goal = RRState(board)
+        #self.goal.board.end()
 
     def actions(self, state: RRState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
-        # TODO
-        pass
+        actions = []
+
+        robots = ("R", "Y", "G", "B")
+        
+        for r in robots:
+            actions += state.board.robot_valid_actions(r)
+
+        return actions
 
     def result(self, state: RRState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação retornada deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state). """
-        # TODO
-        pass
+
+        new_state = RRState(state.board)
+
+        new_state.board.robot_action(action)
+
+        return new_state
 
     def goal_test(self, state: RRState):
         """ Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se o alvo e o robô da
         mesma cor ocupam a mesma célula no tabuleiro. """
-        # TODO
-        pass
+
+        return 
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
@@ -142,10 +211,11 @@ if __name__ == "__main__":
     # Ler o ficheiro de input de sys.argv[1],
     board = parse_instance(sys.argv[1])
 
-    #problem = RicochetRobots(board)
+    problem = RicochetRobots(board)
 
-    #initial_state = RRState(board)
+    initial_state = RRState(board)
 
+    print(problem.actions(initial_state))
     #result_state = problem.result(initial_state)
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
