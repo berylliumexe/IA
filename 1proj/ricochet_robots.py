@@ -51,22 +51,25 @@ class Board:
 
         #append robots
         for r, pos in robots:
-            self._set_robot(r, pos)
+            self._set_robot(r, self.__position_in(pos))
+            print(r, self.robot_position(r), pos)
         
         #append target
         t, pos = target
-        self._set_target(t, pos)
+        self._set_target(t, self.__position_in(pos))
 
         #append barriers
         for b, pos in barriers:
-            x, y = pos
-            self._set_barrier(b, (x,y))
+            self._set_barrier(b, self.__position_in(pos))
 
-    def __position(self, position):
-        return position[0] - 1, position[1] -1
+    def __position_out(self, position):
+        return (position[0] + 1, position[1] + 1)
+
+    def __position_in(self, position):
+        return (position[0] - 1, position[1] - 1)
 
     def __get_position(self, position):
-        x, y = self.__position(position)
+        x, y = position
         return self.board[x][y]
 
     def _get_barriers(self, position):
@@ -86,7 +89,7 @@ class Board:
 
     def _set_target(self, target, position):
         self.__get_position(position)["target"] = target
-        self.target = position, target
+        self.target = target, position
     
     def _reset_robot(self, position):
         self.__get_position(position)["robot"] = None
@@ -94,17 +97,18 @@ class Board:
 
     def robot_position(self, robot: str):
         """ Devolve a posição atual do robô passado como argumento. """
-        
         for x in range(self.size):
             for y in range(self.size):
                 if self._get_robot((x, y)) == robot:
-                    return (x + 1, y + 1)
+                    return self.__position_out((x, y))
+
+        raise NotImplementedError
 
     def robot_valid_actions(self, robot):
         """ Devolve as possiveis ações do robô passado como argumento. """
         actions = []
 
-        r_x, r_y = self.__position(self.robot_position(robot))
+        r_x, r_y = self.__position_in(self.robot_position(robot))
 
         #try up        
         if ("u" not in self._get_barriers((r_x, r_y))) and ("b" not in self._get_barriers((r_x - 1, r_y))) \
@@ -134,13 +138,25 @@ class Board:
     
     
     def robot_action(self, action):
-        robot, pos = action
+        robot, direction = action
+        position = self.__position_in(self.robot_position(robot))
+        self._reset_robot(position)
 
-        self._reset_robot(self.robot_position(robot))
-        self._set_robot(robot, pos)
+        if direction == "u":
+            position = (position[0] - 1, position[1])
+        if direction == "b":
+            position = (position[0] + 1, position[1])
+        if direction == "l":
+            position = (position[0], position[1] - 1)
+        if direction == "r":
+            position = (position[0], position[1] + 1)
+
+        self._set_robot(robot, position)
+        position = self.robot_position(robot)
+        print(f"robot {robot} is now on ({position})")
 
     def robot_check_target(self):
-        x, y = self.__position(self.robot_position(self.target[0]))
+        x, y = self.__position_in(self.robot_position(self.target[0]))
         return self._get_target((x,y)) == self._get_robot((x,y))
 
 
@@ -200,7 +216,7 @@ class RicochetRobots(Problem):
         self.actions(state). """
 
         new_state = RRState(state.board)
-
+        print(action)
         new_state.board.robot_action(action)
 
         return new_state
@@ -214,9 +230,8 @@ class RicochetRobots(Problem):
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
-        # TODO
-        pass
-
+        #print(node.state)
+        return 1
 
 if __name__ == "__main__":
     # TODO:
