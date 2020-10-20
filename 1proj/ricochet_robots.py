@@ -43,7 +43,7 @@ class Board:
                 if x == 0:
                     self._set_barrier("u", (x,y))
                 if x == self.size - 1:
-                    self._set_barrier("b", (x,y))
+                    self._set_barrier("d", (x,y))
                 if y == 0:
                     self._set_barrier("l", (x,y))
                 if y == self.size - 1:
@@ -62,7 +62,7 @@ class Board:
             self._set_barrier(b, self.__position_in(pos))
             if b == "u":
                 self._set_barrier(b, self.__position_in((pos[0] - 1, pos[1])))
-            if b == "b":
+            if b == "d":
                 self._set_barrier(b, self.__position_in((pos[0] + 1, pos[1])))
             if b == "l":
                 self._set_barrier(b, self.__position_in((pos[0], pos[1] - 1)))
@@ -116,7 +116,7 @@ class Board:
             if move == "u" and self._get_robot((x - 1, y)) == None:
                 return True
 
-            if move == "b" and self._get_robot((x + 1, y - 1)) == None:
+            if move == "d" and self._get_robot((x + 1, y - 1)) == None:
                 return True
 
             if move == "l" and self._get_robot((x, y - 1)) == None:
@@ -132,7 +132,7 @@ class Board:
         """ Devolve as possiveis ações do robô passado como argumento. """
         x, y = self.__position_in(self.robot_position(robot))
 
-        possible_actions = ("u", "b", "l", "r")
+        possible_actions = ("u", "d", "l", "r")
 
         actions = [(robot, ac) for ac in possible_actions if self._valid_action((x, y), ac)]
 
@@ -142,17 +142,18 @@ class Board:
     def robot_action(self, action):
         robot, direction = action
         position = self.__position_in(self.robot_position(robot))
+        position = [position[0], position[1]]
         self._reset_robot(position)
 
-        while(_valid_action(position, direction));
+        while(self._valid_action(position, direction)):
             if direction == "u":
-                position = (position[0] - 1, position[1])
-            if direction == "b":
-                position = (position[0] + 1, position[1])
+                position[0] -= 1
+            if direction == "d":
+                position[0] += 1
             if direction == "l":
-                position = (position[0], position[1] - 1)
+                position[1] -= 1
             if direction == "r":
-                position = (position[0], position[1] + 1)
+                position[1] += 1
 
         self._set_robot(robot, position)
         position = self.robot_position(robot)
