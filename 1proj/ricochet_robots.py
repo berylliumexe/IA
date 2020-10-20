@@ -88,6 +88,9 @@ class Board:
 
     def _get_target(self, position):
         return self.__get_position(position)["target"]
+    
+    def get_target(self):
+        return self.target
 
     def _set_barrier(self, barrier, position):
         self.__get_position(position)["barriers"].append(barrier)
@@ -234,9 +237,10 @@ class RicochetRobots(Problem):
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
         board = node.state.board
-        color, target_pos = board.target
-        robot_pos = board.robot_position(color)
         
+        color, target_pos = board.get_target()
+        robot_pos = board.robot_position(color)
+
         return math.sqrt(math.pow((target_pos[0] - robot_pos[0]), 2) + math.pow((target_pos[1] - robot_pos[1]), 2))
 
 
