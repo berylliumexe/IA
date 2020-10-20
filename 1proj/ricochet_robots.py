@@ -31,7 +31,7 @@ class Board:
     def __init__(self, size, robots, target, barriers):
         self.size = size
         self.board = []
-        self.target = ()        
+        self.target = ()
 
         #init board
         for x in range(size):
@@ -52,7 +52,7 @@ class Board:
         #append robots
         for r, pos in robots:
             self._set_robot(r, self.__position_in(pos))
-        
+
         #append target
         t, pos = target
         self._set_target(t, self.__position_in(pos))
@@ -81,10 +81,10 @@ class Board:
 
     def _get_barriers(self, position):
         return self.__get_position(position)["barriers"]
-    
+
     def _get_robot(self, position):
         return self.__get_position(position)["robot"]
-    
+
     def _get_target(self, position):
         return self.__get_position(position)["target"]
 
@@ -97,10 +97,10 @@ class Board:
     def _set_target(self, target, position):
         self.__get_position(position)["target"] = target
         self.target = target, position
-    
+
     def _reset_robot(self, position):
         self.__get_position(position)["robot"] = None
-            
+
 
     def robot_position(self, robot: str):
         """ Devolve a posição atual do robô passado como argumento. """
@@ -111,9 +111,9 @@ class Board:
 
     def _valid_action(self, position, move):
         x, y = position
-        
+
         if move not in self._get_barriers((x, y)):
-            if move == "u" and self._get_robot((x - 1, y)) == None: 
+            if move == "u" and self._get_robot((x - 1, y)) == None:
                 return True
 
             if move == "b" and self._get_robot((x + 1, y - 1)) == None:
@@ -137,21 +137,22 @@ class Board:
         actions = [(robot, ac) for ac in possible_actions if self._valid_action((x, y), ac)]
 
         return actions
-    
-    
+
+
     def robot_action(self, action):
         robot, direction = action
         position = self.__position_in(self.robot_position(robot))
         self._reset_robot(position)
 
-        if direction == "u":
-            position = (position[0] - 1, position[1])
-        if direction == "b":
-            position = (position[0] + 1, position[1])
-        if direction == "l":
-            position = (position[0], position[1] - 1)
-        if direction == "r":
-            position = (position[0], position[1] + 1)
+        while(_valid_action(position, direction));
+            if direction == "u":
+                position = (position[0] - 1, position[1])
+            if direction == "b":
+                position = (position[0] + 1, position[1])
+            if direction == "l":
+                position = (position[0], position[1] - 1)
+            if direction == "r":
+                position = (position[0], position[1] + 1)
 
         self._set_robot(robot, position)
         position = self.robot_position(robot)
@@ -174,7 +175,7 @@ def parse_instance(filename: str) -> Board:
 
     with open(filename) as file:
         size = int(file.readline())
-        
+
         #parse robots
         for _ in range(num_robots):
             line = file.readline().split(" ")
@@ -183,7 +184,7 @@ def parse_instance(filename: str) -> Board:
         #parse target
         line = file.readline().split(" ")
         target = (line[0], (int(line[1]), int(line[2]))) #(color, (x, y))
-        
+
         #parse barriers
         for _ in range(int(file.readline())):
             line = file.readline().rsplit()
@@ -204,7 +205,7 @@ class RicochetRobots(Problem):
         actions = []
 
         robots = ("R", "Y", "G", "B")
-        
+
         for r in robots:
             actions += state.board.robot_valid_actions(r)
 
@@ -227,7 +228,7 @@ class RicochetRobots(Problem):
         um estado objetivo. Deve verificar se o alvo e o robô da
         mesma cor ocupam a mesma célula no tabuleiro. """
 
-        return state.board.robot_check_target()        
+        return state.board.robot_check_target()
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
