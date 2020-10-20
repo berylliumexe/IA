@@ -52,7 +52,6 @@ class Board:
         #append robots
         for r, pos in robots:
             self._set_robot(r, self.__position_in(pos))
-            print(r, self.robot_position(r), pos)
         
         #append target
         t, pos = target
@@ -61,6 +60,14 @@ class Board:
         #append barriers
         for b, pos in barriers:
             self._set_barrier(b, self.__position_in(pos))
+            if b == "u":
+                self._set_barrier(b, self.__position_in((pos[0] - 1, pos[1])))
+            if b == "b":
+                self._set_barrier(b, self.__position_in((pos[0] + 1, pos[1])))
+            if b == "l":
+                self._set_barrier(b, self.__position_in((pos[0], pos[1] - 1)))
+            if b == "r":
+                self._set_barrier(b, self.__position_in((pos[0], pos[1] + 1)))
 
     def __position_out(self, position):
         return (position[0] + 1, position[1] + 1)
@@ -102,38 +109,33 @@ class Board:
                 if self._get_robot((x, y)) == robot:
                     return self.__position_out((x, y))
 
-        raise NotImplementedError
+    def _valid_action(self, position, move):
+        x, y = position
+        
+        if move not in self._get_barriers((x, y)):
+            if move == "u" and self._get_robot((x - 1, y)) == None: 
+                return True
+
+            if move == "b" and self._get_robot((x + 1, y - 1)) == None:
+                return True
+
+            if move == "l" and self._get_robot((x, y - 1)) == None:
+                return True
+
+            if move == "r" and self._get_robot((x, y + 1)) == None:
+                return True
+
+        return False
+
 
     def robot_valid_actions(self, robot):
         """ Devolve as possiveis ações do robô passado como argumento. """
-        actions = []
+        x, y = self.__position_in(self.robot_position(robot))
 
-        r_x, r_y = self.__position_in(self.robot_position(robot))
+        possible_actions = ("u", "b", "l", "r")
 
-        #try up        
-        if ("u" not in self._get_barriers((r_x, r_y))) and ("b" not in self._get_barriers((r_x - 1, r_y))) \
-            and (self._get_robot((r_x - 1, r_y)) == None):
+        actions = [(robot, ac) for ac in possible_actions if self._valid_action((x, y), ac)]
 
-            actions.append((robot, "u"))
-
-        #try bot
-        if ("b" not in self._get_barriers((r_x, r_y))) and ("u" not in self._get_barriers((r_x + 1, r_y - 1))) \
-            and (self._get_robot((r_x + 1, r_y - 1)) == None):
-
-            actions.append((robot, "b"))
-
-        #try left
-        if ("l" not in self._get_barriers((r_x, r_y))) and ("r" not in self._get_barriers((r_x, r_y - 1))) \
-            and (self._get_robot((r_x, r_y - 1)) == None):
-
-            actions.append((robot, "l"))
-
-        #try right
-        if ("r" not in self._get_barriers((r_x, r_y))) and ("l" not in self._get_barriers((r_x , r_y + 1))) \
-            and (self._get_robot((r_x, r_y + 1)) == None):
-
-            actions.append((robot, "r"))
-        
         return actions
     
     
@@ -153,7 +155,6 @@ class Board:
 
         self._set_robot(robot, position)
         position = self.robot_position(robot)
-        print(f"robot {robot} is now on ({position})")
 
     def robot_check_target(self):
         x, y = self.__position_in(self.robot_position(self.target[0]))
@@ -216,7 +217,7 @@ class RicochetRobots(Problem):
         self.actions(state). """
 
         new_state = RRState(state.board)
-        print(action)
+
         new_state.board.robot_action(action)
 
         return new_state
