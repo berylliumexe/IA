@@ -10,6 +10,7 @@ from search import Problem, Node, astar_search, breadth_first_tree_search, \
     depth_first_tree_search, greedy_search
 import sys
 import math
+import random
 
 
 class RRState:
@@ -199,6 +200,7 @@ class RicochetRobots(Problem):
         for r in robots:
             actions += state.board.robot_valid_actions(r)
 
+        random.shuffle(actions)
         return actions
 
     def result(self, state: RRState, action):
@@ -224,21 +226,21 @@ class RicochetRobots(Problem):
         """ Função heuristica utilizada para a procura A*. """
         color, target_pos = node.state.board.get_target()
         robot_pos = node.state.board.robot_position(color)
-
-        return math.sqrt(math.pow((target_pos[0] - robot_pos[0]), 2) + math.pow((target_pos[1] - robot_pos[1]), 2))
+        #return math.sqrt(math.pow((target_pos[0] - robot_pos[0]), 2) + math.pow((target_pos[1] - robot_pos[1]), 2)) # euclidian distance
+        return abs(target_pos[0] - robot_pos[0]) + abs(target_pos[1] - robot_pos[1]) # manhathan distance
 
 
 
 if __name__ == "__main__":
-    # TODO:
     # Ler o ficheiro de input de sys.argv[1],
     board = parse_instance(sys.argv[1])
 
     problem = RicochetRobots(board)
 
-    initial_state = RRState(board)
+    # Obter o nó solução usando a procura A*:
+    solution_node = astar_search(problem)
 
-    print(problem.actions(initial_state))
+    print(solution_node.solution)
     #result_state = problem.result(initial_state)
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
