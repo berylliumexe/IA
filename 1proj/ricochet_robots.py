@@ -10,8 +10,8 @@ from search import Problem, Node, astar_search, breadth_first_tree_search, \
     depth_first_tree_search, greedy_search
 import sys
 import math
-import random
-
+import copy
+import time
 
 class RRState:
     state_id = 0
@@ -26,7 +26,6 @@ class RRState:
         de abertos nas procuras informadas.
         """
         return self.id < other.id
-
 
 class Board:
     """ Representacao interna de um tabuleiro de Ricochet Robots. """
@@ -71,6 +70,9 @@ class Board:
                 self._set_barrier("r", self.__position_in(self.__position_change(pos, "l")))
             if b == "r":
                 self._set_barrier("l", self.__position_in(self.__position_change(pos, "r")))
+
+    def __eq__(self, other):
+        return isinstance(other, Board) and self.robots == other.robots
 
     def __position_change(self, position, direction):
         """ Returns the translated position according to the input direction """
@@ -183,7 +185,23 @@ def parse_instance(filename: str) -> Board:
 
     return Board(size, robots, target, barriers)
 
+class Heuristic():
+    def manhatan_distance(p1, p2):
+        return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
+    def euclidian_distance(p1, p2):
+        return math.sqrt(math.pow((p1[0] - p2[0]), 2) + math.pow((p1[1] - p2[1]), 2))
+
+    def diagonal_distance(p1, p2):
+        return max(abs(p1[0] - p2[0]), abs(p1[1] - p2[1]))
+
+    def same_row_col(p1, p2):
+        r = 2
+        if p1[0] == p2[0]:
+            r -= 1
+        if p1[1] == p2[1]:
+            r -= 1        
+        return r
 
 class RicochetRobots(Problem):
     def __init__(self, board: Board):
@@ -200,7 +218,6 @@ class RicochetRobots(Problem):
         for r in robots:
             actions += state.board.robot_valid_actions(r)
 
-        random.shuffle(actions)
         return actions
 
     def result(self, state: RRState, action):
@@ -208,12 +225,12 @@ class RicochetRobots(Problem):
         'state' passado como argumento. A ação retornada deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state). """
-
-        new_state = RRState(state.board)
-
-        new_state.board.robot_action(action)
-
-        return new_state
+        if action in state.board.robot_valid_actions(action[0]):
+            new_state = RRState(copy.deepcopy(state.board))
+            new_state.board.robot_action(action)
+            return new_state
+        else:
+            return state
 
     def goal_test(self, state: RRState):
         """ Retorna True se e só se o estado passado como argumento é
@@ -226,9 +243,8 @@ class RicochetRobots(Problem):
         """ Função heuristica utilizada para a procura A*. """
         color, target_pos = node.state.board.get_target()
         robot_pos = node.state.board.robot_position(color)
-        #return math.sqrt(math.pow((target_pos[0] - robot_pos[0]), 2) + math.pow((target_pos[1] - robot_pos[1]), 2)) # euclidian distance
-        return abs(target_pos[0] - robot_pos[0]) + abs(target_pos[1] - robot_pos[1]) # manhathan distance
-
+        
+        return Heuristic.same_row_col(target_pos, robot_pos)
 
 
 if __name__ == "__main__":
@@ -236,13 +252,14 @@ if __name__ == "__main__":
     board = parse_instance(sys.argv[1])
 
     problem = RicochetRobots(board)
-
+    times = time.time()
     # Obter o nó solução usando a procura A*:
     solution_node = astar_search(problem)
+    took = time.time() - times
 
-    print(solution_node.solution)
-    #result_state = problem.result(initial_state)
-    # Usar uma técnica de procura para resolver a instância,
-    # Retirar a solução a partir do nó resultante,
-    # Imprimir para o standard output no formato indicado.
+    print(len(solution_node.solution()))
+    for s in solution_node.solution():
+        print(f"{s[0]} {s[1]}")
+    
+    print(f"Took {took*1000}ms")
     pass
