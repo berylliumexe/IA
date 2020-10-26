@@ -7,11 +7,10 @@
 # 93739 Miguel Silva
 
 from search import Problem, Node, astar_search, breadth_first_tree_search, \
-    depth_first_tree_search, greedy_search
+    depth_first_tree_search, greedy_search, compare_searchers, iterative_deepening_search, recursive_best_first_search, bidirectional_search, breadth_first_graph_search, depth_first_tree_search
 import sys
 import math
 import copy
-import time
 
 class RRState:
     state_id = 0
@@ -195,12 +194,38 @@ class Heuristic():
     def diagonal_distance(p1, p2):
         return max(abs(p1[0] - p2[0]), abs(p1[1] - p2[1]))
 
-    def same_row_col(p1, p2):
+    def same_row_col_v1(p1, p2):
         r = 2
         if p1[0] == p2[0]:
             r -= 1
         if p1[1] == p2[1]:
             r -= 1        
+        return r
+
+    def same_row_col_v2(p1, p2):
+        r = 0
+        b = Heuristic.manhatan_distance(p1, p2)
+        if p1[0] == p2[0]:
+            r = b * 0.5
+        if p1[1] == p2[1]:
+            r = b * 0.5        
+        return b - r
+
+    def same_row_col_v3(p1, p2):
+        r = Heuristic.manhatan_distance(p1, p2)
+        if p1[0] == p2[0]:
+            r *= 0.1
+        if p1[1] == p2[1]:
+            r *= 0.1        
+        return r
+
+    def same_row_col_v4(p1, p2, size):
+        r = Heuristic.manhatan_distance(p1, p2)
+        print(r)
+        if r > size:
+            return Heuristic.same_row_col_v1(p1,p2)
+        if p1[0] == p2[0] or p1[1] == p2[1]:
+            r *= 0.5
         return r
 
 class RicochetRobots(Problem):
@@ -242,24 +267,51 @@ class RicochetRobots(Problem):
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
         color, target_pos = node.state.board.get_target()
-        robot_pos = node.state.board.robot_position(color)
         
-        return Heuristic.same_row_col(target_pos, robot_pos)
+        robot_pos = node.state.board.robot_position(color)
+        size = node.state.board.size
+        return Heuristic.same_row_col_v4(robot_pos, target_pos, size)
+        ts = 0
+        robots = ("R", "Y", "G", "B")
+        for r in robots:
+            robot_pos = node.state.board.robot_position(r)
+            if r == color:
+                ts += Heuristic.same_row_col_v1(target_pos, robot_pos)
+            else:
+                ts += Heuristic.manhatan_distance(target_pos, robot_pos)
+        robot_pos = node.state.board.robot_position(color)
+            
+        return ts
 
+def output(node):
+    print(len(node.solution()))
+
+    for s in node.solution():
+        print(f"{s[0]} {s[1]}")
+
+def average_time(num_iter):
+    t = 0
+    problem = RicochetRobots(board)
+    for _ in range(num_iter):
+        start = timer()
+        solution_node = depth_first_tree_search(problem)
+        end = timer()
+        t += (end - start)
+    
+    return t / num_iter
 
 if __name__ == "__main__":
+    from timeit import default_timer as timer
     # Ler o ficheiro de input de sys.argv[1],
     board = parse_instance(sys.argv[1])
 
+    #tm = average_time(1)
     problem = RicochetRobots(board)
-    times = time.time()
-    # Obter o nó solução usando a procura A*:
-    solution_node = astar_search(problem)
-    took = time.time() - times
-
-    print(len(solution_node.solution()))
-    for s in solution_node.solution():
-        print(f"{s[0]} {s[1]}")
+    print(compare_searchers([problem], None))
+    ## Obter o nó solução usando a procura A*:
+    #start = timer()
+    #solution_node = iterative_deepening_search(problem)
+    #end = timer()
+    #output(solution_node)
     
-    print(f"Took {took*1000}ms")
-    pass
+    #print(f"Took {(tm)*1000}ms on average")

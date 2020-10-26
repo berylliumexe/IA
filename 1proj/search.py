@@ -1555,15 +1555,28 @@ class InstrumentedProblem(Problem):
 
 
 def compare_searchers(problems, header,
-                      searchers=[breadth_first_tree_search,
-                                 breadth_first_graph_search,
-                                 depth_first_graph_search,
-                                 iterative_deepening_search,
-                                 depth_limited_search,
+                      searchers=[#breadth_first_tree_search,
+                                 #breadth_first_graph_search,
+                                 #depth_first_tree_search,
+                                 #depth_first_graph_search,
+                                 #iterative_deepening_search,
+                                 #bidirectional_search,
+                                 #greedy_search,
+                                 #astar_search,
+                                 #depth_limited_search,
                                  recursive_best_first_search]):
+    import signal
+    def handler(signum, frame):
+        raise Exception("end of time")
+
+    signal.signal(signal.SIGALRM, handler)
     def do(searcher, problem):
         p = InstrumentedProblem(problem)
-        searcher(p)
+        signal.alarm(5)
+        try:
+            searcher(p)
+        except Exception:
+            return "Too long..."
         return p
 
     table = [[name(s)] + [do(s, p) for p in problems] for s in searchers]

@@ -44,9 +44,16 @@ def test3():
 
     # Aplicar as ações que resolvem a instância
     s1 = problem.result(s0, ('B', 'l'))
+    print(s1.board.robot_position('B'))
+
     s2 = problem.result(s1, ('Y', 'u'))
+    print(s2.board.robot_position('Y'))
+
     s3 = problem.result(s2, ('R', 'r'))
+    print(s3.board.robot_position('R'))
+
     s4 = problem.result(s3, ('R', 'u'))
+    print(s4.board.robot_position('R'))
 
     # Verificar que o robô está no alvo:
     print(problem.goal_test(s4))
@@ -54,13 +61,25 @@ def test3():
 
 def test4():
     # Ler tabuleiro do ficheiro "i1.txt":
-    board = parse_instance("i1.txt")
+    board = parse_instance("instances/i1.txt")
 
     # Criar uma instância de RicochetRobots:
     problem = RicochetRobots(board)
 
     # Obter o nó solução usando a procura A*:
-    solution_node = astar_search(problem)
+    solution_node = astar_search(problem, display=True)
+
+    print("done.")
+
+def test5():
+    # Ler tabuleiro do ficheiro "i1.txt":
+    board = parse_instance("i4.txt")
+
+    # Criar uma instância de RicochetRobots:
+    problem = RicochetRobots(board)
+
+    # Obter o nó solução usando a procura A*:
+    solution_node = astar_search(problem, display=True)
 
     print("done.")
 
@@ -72,3 +91,5 @@ if __name__ == "__main__":
     test3()
     print("---")
     test4()
+    print("---")
+    #test5()
