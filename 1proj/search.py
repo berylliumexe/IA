@@ -1572,10 +1572,11 @@ def compare_searchers(problems, header,
     signal.signal(signal.SIGALRM, handler)
     def do(searcher, problem):
         p = InstrumentedProblem(problem)
-        signal.alarm(5)
+        signal.alarm(20)
         try:
             searcher(p)
-        except Exception:
+        except Exception as e:
+            print(e)
             return "Too long..."
         return p
 

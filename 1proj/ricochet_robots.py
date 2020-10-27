@@ -8,6 +8,7 @@
 
 from search import Problem, Node, astar_search, breadth_first_tree_search, \
     depth_first_tree_search, greedy_search, compare_searchers, iterative_deepening_search, recursive_best_first_search, bidirectional_search, breadth_first_graph_search, depth_first_tree_search
+from utils import manhattan_distance, euclidean_distance, hamming_distance
 import sys
 import math
 import copy
@@ -153,6 +154,9 @@ class Board:
     def robot_check_target(self):
         tg = self.get_target()
         return tg[1] == self.robot_position(tg[0])
+    
+    def shortest_path(self):
+        pass
 
 
 def parse_instance(filename: str) -> Board:
@@ -221,11 +225,12 @@ class Heuristic():
 
     def same_row_col_v4(p1, p2, size):
         r = Heuristic.manhatan_distance(p1, p2)
-        print(r)
         if r > size:
             return Heuristic.same_row_col_v1(p1,p2)
         if p1[0] == p2[0] or p1[1] == p2[1]:
             r *= 0.5
+        if p1[0] == p2[0] and p1[1] == p2[1]:
+            r = 0
         return r
 
 class RicochetRobots(Problem):
@@ -269,8 +274,10 @@ class RicochetRobots(Problem):
         color, target_pos = node.state.board.get_target()
         
         robot_pos = node.state.board.robot_position(color)
-        size = node.state.board.size
-        return Heuristic.same_row_col_v4(robot_pos, target_pos, size)
+        #size = node.state.board.size
+        return hamming_distance(robot_pos, target_pos)
+
+
         ts = 0
         robots = ("R", "Y", "G", "B")
         for r in robots:
@@ -307,11 +314,11 @@ if __name__ == "__main__":
 
     #tm = average_time(1)
     problem = RicochetRobots(board)
-    print(compare_searchers([problem], None))
+    #print(compare_searchers([problem], None))
     ## Obter o nó solução usando a procura A*:
     #start = timer()
-    #solution_node = iterative_deepening_search(problem)
+    solution_node = recursive_best_first_search(problem)
     #end = timer()
-    #output(solution_node)
+    output(solution_node)
     
     #print(f"Took {(tm)*1000}ms on average")
