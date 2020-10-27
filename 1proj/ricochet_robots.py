@@ -101,6 +101,9 @@ class Board:
             self.barriers[position] = []
             self.barriers[position].append(barrier)
 
+    def get_target(self):
+        return self.target
+
     #setters
     def _set_robot(self, robot, position):
         self.robots[position] = robot
@@ -119,10 +122,7 @@ class Board:
             
             return True   
 
-        return False
-
-    def get_target(self):
-        return self.target
+        return False    
 
     def robot_position(self, robot: str):
         """ Devolve a posição atual do robô passado como argumento. """     
@@ -143,14 +143,15 @@ class Board:
     def robot_action(self, action):
         robot, direction = action
         position = self.robot_position(robot)
+        
         self._reset_robot(position)
-
+        
         while self._valid_action(position, direction):
             position = self.__position_change(position, direction)
 
         self._set_robot(robot, position)
 
-    def robot_check_target(self):
+    def check_finish(self):
         tg = self.get_target()
         return tg[1] == self.robot_position(tg[0])
     
@@ -273,7 +274,7 @@ class RicochetRobots(Problem):
         um estado objetivo. Deve verificar se o alvo e o robô da
         mesma cor ocupam a mesma célula no tabuleiro. """
 
-        return state.board.robot_check_target()
+        return state.board.check_finish()
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
