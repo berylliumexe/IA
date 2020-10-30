@@ -6,15 +6,19 @@
 # 93744 Nuno Carvalho
 # 93739 Miguel Silva
 
-from search import Problem, Node, astar_search, compare_searchers, iterative_deepening_search, recursive_best_first_search
+from search import Problem, Node, astar_search, compare_searchers, iterative_deepening_search, recursive_best_first_search, bidirectional_search, depth_first_graph_search, depth_first_tree_search
 from utils import manhattan_distance, euclidean_distance, hamming_distance
 import sys
 import math
+import random
 from timeit import default_timer as timer
+
+from multiprocessing import Manager, cpu_count, Process
+
+ROBOTS = ("Y", "B", "G", "R")
 
 class RRState:
     state_id = 0
-
     def __init__(self, board):
         self.board = board
         self.id = RRState.state_id
@@ -26,13 +30,20 @@ class RRState:
         """
         return self.id < other.id
 
+    def __hash__(self):
+        return hash(self.board)
+    
+    def __eq__(self, other):
+        return self.board == other.board
+    
 class Board:
     """ Representacao interna de um tabuleiro de Ricochet Robots. """
-    def __init__(self, size, robots, target, barriers, parsed=False):
-        self.size = size
-        self.target = ()
-        self.robots = {}
-        self.barriers = {}
+    def __init__(self, size, robots, target, barriers, parsed=False, simplified=False):
+        self._size = size
+        self._target = ()
+        self._robots = {}
+        self._barriers = {}
+        self.simplified = simplified
 
         #append robots
         for pos in robots:
@@ -60,15 +71,25 @@ class Board:
         if parsed:
             for x in range(1, size +  1):
                 self._set_barrier("l", (x, 1))
-                self._set_barrier("r", (x, self.size))
+                self._set_barrier("r", (x, self._size))
 
             for y in range(1, size + 1):
                 self._set_barrier("u", (1, y))
-                self._set_barrier("d", (self.size, y))
+                self._set_barrier("d", (self._size, y))
 
-        
+    def __hash__(self):
+        if self.simplified:
+            return hash((self.robot_position(self.get_target()[0])))
+        else:
+            return hash((self.robot_position(r) for r in ROBOTS))
+
+
     def __eq__(self, other):
-        return isinstance(other, Board) and self.robots == other.robots
+        if self.simplified:
+            r = self.get_target()[0]
+            return self.robot_position(r) == other.robot_position(r)
+        else:
+            return all(self.robot_position(r) == other.robot_position(r) for r in ROBOTS)
 
     def __position_change(self, position, direction):
         """ Returns the translated position according to the input direction """
@@ -84,57 +105,56 @@ class Board:
     #getters
     def _get_barriers(self, position):
         try:
-            return self.barriers[position]
+            return self._barriers[position]
         except KeyError:
             return []
 
     def _get_robot(self, position):
         try:
-            return self.robots[position]
+            return self._robots[position]
         except KeyError:
             return None
 
     def _set_barrier(self, barrier, position):
         try:
-            self.barriers[position].append(barrier)
+            self._barriers[position].append(barrier)
         except KeyError:
-            self.barriers[position] = []
-            self.barriers[position].append(barrier)
+            self._barriers[position] = []
+            self._barriers[position].append(barrier)
 
     def get_target(self):
-        return self.target
+        return self._target
 
     #setters
     def _set_robot(self, robot, position):
-        self.robots[position] = robot
+        self._robots[position] = robot
 
     def _set_target(self, target, position):
-        self.target = target, position
+        self._target = target, position
 
     def _reset_robot(self, position):
-        del self.robots[position]
+        del self._robots[position]
 
     def _valid_action(self, position, direction):
         aux_pos = self.__position_change(position, direction)
-
-        if direction not in self._get_barriers(position) and \
-            self._get_robot(aux_pos) == None:
-            
-            return True   
-
-        return False    
+        if self.simplified:
+            return direction not in self._get_barriers(position)
+        else:
+            return direction not in self._get_barriers(position) and \
+                    self._get_robot(aux_pos) == None
 
     def robot_position(self, robot: str):
         """ Devolve a posição atual do robô passado como argumento. """     
-        for r in self.robots:
-            if self.robots[r] == robot:
+        for r in self._robots:
+            if self._robots[r] == robot:
                 return r
 
     def robot_valid_actions(self, robot):
         """ Devolve as possiveis ações do robô passado como argumento. """
         pos = self.robot_position(robot)
 
-        pa = ("u", "d", "l", "r")
+        pa = ["r", "d", "l", "u"]
+        
         actions = [(robot, ac) for ac in pa if self._valid_action(pos, ac)]
 
         return actions
@@ -146,16 +166,19 @@ class Board:
         
         self._reset_robot(position)
         
-        while self._valid_action(position, direction):
-            position = self.__position_change(position, direction)
+        if self.simplified:
+            if self._valid_action(position, direction):
+                position = self.__position_change(position, direction)
+        else:
+            while self._valid_action(position, direction):
+                position = self.__position_change(position, direction)
 
         self._set_robot(robot, position)
-
+    
     def check_finish(self):
         tg = self.get_target()
         return tg[1] == self.robot_position(tg[0])
     
-
 def parse_instance(filename: str) -> Board:
     """ Lê o ficheiro cujo caminho é passado como argumento e retorna
     uma instância da classe Board. """
@@ -190,50 +213,6 @@ def parse_instance(filename: str) -> Board:
 
     return Board(size, robots, target, barriers, True)
 
-class Heuristic():
-    def manhatan_distance(p1, p2):
-        return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
-
-    def euclidian_distance(p1, p2):
-        return math.sqrt(math.pow((p1[0] - p2[0]), 2) + math.pow((p1[1] - p2[1]), 2))
-
-    def diagonal_distance(p1, p2):
-        return max(abs(p1[0] - p2[0]), abs(p1[1] - p2[1]))
-
-    def same_row_col_v1(p1, p2):
-        r = 2
-        if p1[0] == p2[0]:
-            r -= 1
-        if p1[1] == p2[1]:
-            r -= 1        
-        return r
-
-    def same_row_col_v2(p1, p2):
-        r = 0
-        b = Heuristic.manhatan_distance(p1, p2)
-        if p1[0] == p2[0]:
-            r = b * 0.5
-        if p1[1] == p2[1]:
-            r = b * 0.5        
-        return b - r
-
-    def same_row_col_v3(p1, p2):
-        r = Heuristic.manhatan_distance(p1, p2)
-        if p1[0] == p2[0]:
-            r *= 0.1
-        if p1[1] == p2[1]:
-            r *= 0.1        
-        return r
-
-    def same_row_col_v4(p1, p2, size):
-        r = Heuristic.manhatan_distance(p1, p2)
-        if r > size:
-            return Heuristic.same_row_col_v1(p1,p2)
-        if p1[0] == p2[0] or p1[1] == p2[1]:
-            r *= 0.5
-        if p1[0] == p2[0] and p1[1] == p2[1]:
-            r = 0
-        return r
 
 class RicochetRobots(Problem):
     def __init__(self, board: Board):
@@ -243,11 +222,9 @@ class RicochetRobots(Problem):
     def actions(self, state: RRState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
+
         actions = []
-
-        robots = ("R", "Y", "G", "B")
-
-        for r in robots:
+        for r in ROBOTS:
             actions += state.board.robot_valid_actions(r)
 
         return actions
@@ -257,17 +234,12 @@ class RicochetRobots(Problem):
         'state' passado como argumento. A ação retornada deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state). """
+        b = state.board
+    
+        new_board = Board(b._size, b._robots, b._target, b._barriers)
+        new_board.robot_action(action)
 
-        if action in state.board.robot_valid_actions(action[0]):
-            b = state.board
-        
-            new_board = Board(b.size, b.robots, b.target, b.barriers)
-            new_state = RRState(new_board)
-            new_state.board.robot_action(action)
-
-            return new_state
-        else:
-            return state
+        return RRState(new_board)
 
     def goal_test(self, state: RRState):
         """ Retorna True se e só se o estado passado como argumento é
@@ -279,12 +251,52 @@ class RicochetRobots(Problem):
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
         b = node.state.board
+        
+        simplified_problem = SimplifiedRicochetRobots(b)
+        solution_node = recursive_best_first_search(simplified_problem)
 
-        color, target_pos = b.get_target()
-        robot_pos = b.robot_position(color)
+        aux = 0
+        counter = 0
 
-        return hamming_distance(robot_pos, target_pos)
+        if solution_node != None:
+            for s in solution_node.solution():
+                if s[1] != aux:
+                    aux = s[1]
+                    counter += 1
+        else:
+            counter = 3
+        return counter
 
+class SimplifiedRicochetRobots(RicochetRobots):
+    def __init__(self, board: Board):
+        self.initial = RRState(board)
+
+    def actions(self, state: RRState):
+        """ Retorna uma lista de ações que podem ser executadas a
+        partir do estado passado como argumento. """
+        robot = state.board.get_target()[0]
+
+        actions = state.board.robot_valid_actions(robot)
+        return actions
+
+    def result(self, state: RRState, action):
+        """ Retorna o estado resultante de executar a 'action' sobre
+        'state' passado como argumento. A ação retornada deve ser uma
+        das presentes na lista obtida pela execução de
+        self.actions(state). """
+        b = state.board
+    
+        new_board = Board(b._size, b._robots, b._target, b._barriers, simplified=True)
+        new_board.robot_action(action)
+
+        return RRState(new_board)
+    
+    def h(self, node: Node):
+        b = node.state.board
+        robot_pos = b.robot_position(b.get_target()[0])
+        target_pos = b.get_target()[1]
+
+        return manhattan_distance(robot_pos, target_pos)
 
 def output(node):
     print(len(node.solution()))
@@ -292,29 +304,12 @@ def output(node):
     for s in node.solution():
         print(f"{s[0]} {s[1]}")
 
-def average_time(num_iter):
-    t = 0
-    problem = RicochetRobots(board)
-    for _ in range(num_iter):
-        start = timer()
-        solution_node = recursive_best_first_search(problem)
-        end = timer()
-        t += (end - start)
-    
-    return t / num_iter
-
 if __name__ == "__main__":
     # Ler o ficheiro de input de sys.argv[1],
     board = parse_instance(sys.argv[1])
 
     problem = RicochetRobots(board)
 
-    #print(compare_searchers([problem], None))
-
-    start = timer()
     solution_node = recursive_best_first_search(problem)
-    end = timer()
 
     output(solution_node)
-    
-    print(f"Took {(end-start)*1000}ms on average")
