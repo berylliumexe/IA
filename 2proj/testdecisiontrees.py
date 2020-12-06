@@ -74,12 +74,11 @@ for file in files:
 
             for idataset in range(0,27):     
                 D,Y,nl,ol = datasetstreelearning.dataset(idataset)        
-                                    
-                print("<", idataset, "> #points >", D.shape[0], "#feat >", D.shape[1])
+                print("<", idataset, "> #points >", D.shape[0], "#feat >", D.shape[1], "target len: ", nl, "best len: ", ol)
                 try:
                     T = M.createdecisiontree(D,Y,noise=0)
                     Yp = classify(T,D)
-                
+
                     
                     err = np.mean(np.abs(Yp-Y))
                     l = len(str(T))
