@@ -66,7 +66,9 @@ def DTL(examples, attributes, default):
         print("---------")
         best = chooseAttribute(attributes, examples)
         tree = []
-        for v in np.unique(attributes.T[best]):
+        tree += [best]
+        for i, v in enumerate(np.unique(attributes.T[best])):
+            print(f"v: {v}")
             print(f"best: {best}")
             print(f"attributes: {attributes}")
 
@@ -81,7 +83,7 @@ def DTL(examples, attributes, default):
             
             print(f"atts: {atts}")
             subtree = DTL(exs, atts, default)
-            tree = best, v, subtree
+            tree += [subtree]
 
     return tree
 
