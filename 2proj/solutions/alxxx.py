@@ -44,7 +44,6 @@ def GI(attribute, examples):
     g = 0
     for v in np.unique(attribute):
         idxs = np.where(attribute == v)
-        idxs = [i for i in idxs[0] if i < len(examples)]
         elems = np.take(examples, idxs, axis=0)
         p = np.count_nonzero(elems)
         n = len(elems) - p
@@ -53,20 +52,10 @@ def GI(attribute, examples):
     return 1 - g
 
 
-def chooseAttribute(attributes, examples, taken_atts):
-    arr = []
-    print(attributes)
-    print(examples)
-    print(taken_atts)
-    for i, att in enumerate(attributes.T):
-        print(att)
-        arr += [GI(att, examples)] if i not in taken_atts else [-1]
-    
-    print(arr)
-    return np.argmax(arr)
-    #return np.argmax(GI(att, examples) if i not in taken_atts else [0] for i, att in enumerate(attributes.T))
+def chooseAttribute(attributes, examples):
+    return np.argmax(GI(att[i], examples) for i in range(len(examples)))
 
-def DTL(examples, attributes, default, taken_atts):
+def DTL(examples, attributes, default):
     if (not examples.any()):
         return maxVals(default)
     elif (sameClassification(attributes)):
@@ -75,22 +64,23 @@ def DTL(examples, attributes, default, taken_atts):
         return maxVals(examples)
     else:
         print("---------")
-        best = chooseAttribute(attributes, examples, taken_atts)
+        best = chooseAttribute(attributes, examples)
         tree = []
-        taken_atts += [best]
         for v in np.unique(attributes.T[best]):
             print(f"best: {best}")
+            print(f"attributes: {attributes}")
 
             valid_idx = np.where(attributes.T[best] == v)
-
             print(f"valid_idx: {valid_idx}")
+            valid_idx = [e for e in valid_idx[0] if e < len(examples)]
+            print(f"examples: {examples}")
 
             exs = np.take(examples, valid_idx).reshape(-1)
 
-            #atts = np.concatenate((attributes.T[:best] ,attributes.T[best + 1:])).T
+            atts = np.concatenate((attributes.T[:best] ,attributes.T[best + 1:])).T
             
-            #print(f"atts: {atts}")
-            subtree = DTL(exs, attributes, default, taken_atts)
+            print(f"atts: {atts}")
+            subtree = DTL(exs, atts, default)
             tree = best, v, subtree
 
     return tree
@@ -104,7 +94,7 @@ if __name__ == "__main__":
                  
     examples = np.array([0,0,0,1])
 
-    print(DTL(examples, att, examples, []))
+    print(DTL(examples, att, examples))
 
     #print(att.T)
     #idx = np.where(att.T[1] == 0)
