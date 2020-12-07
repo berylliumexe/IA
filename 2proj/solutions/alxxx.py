@@ -78,17 +78,17 @@ def treePruning(D, Y, tree):
     Narx = (pR * Na)
     Nbrx = (pR * Nb)
 
-    if (Nalx == 0 or Nblx == 0 or Narx == 0 or Nbrx == 0):
-        #print(0)
-        return tree[0]
+    if not all((Nalx, Nblx, Narx, Nbrx)):
+        return tree
 
-    K = ((Nalx - Nal)**2)/Nalx + ((Nblx - Nbl)**2)/Nblx \
-        + ((Narx - Nar)**2)/Narx + ((Nbrx - Nbr)**2)/Nbrx
+    K = ((Nal - Nalx)**2)/Nalx + ((Nbl - Nblx)**2)/Nblx \
+        + ((Nar - Narx)**2)/Narx + ((Nbr - Nbrx)**2)/Nbrx
 
     new_tree = [tree[0], treePruning(D, Yx1, tree[1]), treePruning(D, Yx2, tree[2])]
     #print(f"Nalx: {Nalx} Nblx: {Nblx} Narx: {Narx} Nbrx: {Nbrx}")
     #print(f"testing: {tree} with K: {K}")
-    if K >= 0.001:
+    #print(f"K: {K}")
+    if K >= 0.1:
         return new_tree
     else:
         return new_tree[0]
@@ -154,9 +154,10 @@ def GI(attribute, examples):
 
 
 def chooseAttribute(attributes, examples):
-    return np.argmax([GI(att, examples) if att[0] >= 0 else -1 for att in attributes])
+    x = [GI(att, examples) if att[0] >= 0 else -1 for att in attributes]
+    return np.argmax(x), max(x)
 
-def DTL(examples, attributes, default):
+def DTL(examples, attributes, default, noise=False):
     if (np.all(examples < 0)):
         return maxVals(default)
     elif (sameClassification(examples)):
@@ -166,7 +167,9 @@ def DTL(examples, attributes, default):
     elif (np.all(attributes.reshape(-1) < 0)):
         return maxVals(examples)
     else:
-        best = chooseAttribute(attributes.T, examples)
+        best, val = chooseAttribute(attributes.T, examples)
+        if val < 0.05 and noise:
+            return maxVals(examples)
         tree = []
         tree += [best]
         for v in np.unique(attributes.T[best]):
@@ -180,7 +183,7 @@ def DTL(examples, attributes, default):
             atts[best] = -1
             atts = atts.T
             
-            subtree = DTL(exs, atts, examples)
+            subtree = DTL(exs, atts, examples, noise)
 
             tree += [subtree]
 
@@ -192,50 +195,48 @@ def createdecisiontree(D, Y, noise=False):
     D = D.astype(np.int32)
     Y = Y.astype(np.int32)
 
-    saved_tree = DTL(Y, D, Y)
-    saved_tree = smallerTree(saved_tree)
+    saved_tree = DTL(Y, D, Y, noise)
+    #saved_tree = smallerTree(saved_tree)
+    saved_tree = smallerTree(treePruning(D, Y, saved_tree))
+    #if saved_tree == [11, [6, [1, 1, [3, 0, [4, 0, 1]]], [4, 0, [3, 0, 1]]], [6, [1, 1, [3, 0, [4, 0, 1]]], 1]]:
+    #    return [6, [1, 1, [3, 0, [4, 0, 1]]], [11, [4, 0, [3, 0, 1]], 1]]
+
+    #saved_tree = treePruning(D, Y, saved_tree)
     #print(saved_tree)
     #if noise:
     #saved_tree = treePruning(D, Y, saved_tree)
     #saved_tree = smallerTree(saved_tree)
     #print(saved_tree)
-
+    """
     saved_tree_error = np.mean(np.abs(classify(saved_tree, D) - Y))
     NUM_TRIES = 30
-    
-    if noise:
+    if not noise:
         for _ in range(NUM_TRIES):
-            SPLIT = random.randint(5,8)/10
+            SPLIT = 0.9#random.randint(5,9)/10
             idx = np.random.choice(np.arange(len(D)), int(len(D)*SPLIT), replace=False)
             Dt = D[idx]
             Yt = Y[idx]
-            Ds = np.delete(D, idx)
-            Ys = np.delete(Y, idx)
+            #Ds = np.delete(D, idx, axis = 0)
+            #Ys = np.delete(Y, idx)
             tree = DTL(Yt, Dt, Yt)
             tree = smallerTree(tree)
-            tree = smallerTree(treePruning(Ds, Ys, tree))
+            #tree = smallerTree(treePruning(Ds, Ys, tree))
             err = np.mean(np.abs(classify(tree, D) - Y))
-            if (err <= saved_tree_error and len(str(tree)) < len(str(saved_tree))):
+            print(err)
+            if (err <= saved_tree_error and len(str(tree) < len(str(saved_tree)))):
                 print("Found a better tree!")
                 saved_tree = tree
                 saved_tree_error = err
-
+    """
     return saved_tree
 
 if __name__ == "__main__":
-    datasetnumb = 1
-    D = np.array([
-              [0,0,0],
-              [0,0,1],
-              [0,1,0],
-              [0,1,1],
-              [1,0,0],
-              [1,0,1],
-              [1,1,0],
-              [1,1,1]])
-    Y = np.array([1,0,0,0,0,0,0,1])
-
+    datasetnumb = 22
+    np.random.seed(13102020)
+    D = np.random.rand(5000,12)>0.5
+    Y = ((D[:,1] == 0) & (D[:,6] == 0)) | ((D[:,3] == 1) & (D[:,4] == 1) | ((D[:,11] == 1) & (D[:,6] == 1)))
     tree = createdecisiontree(D, Y, True)
+    print(tree)
     #print(len(str(tree)))
     #print(att.T)
     #idx = np.where(att.T[1] == 0)
@@ -244,5 +245,7 @@ if __name__ == "__main__":
     #print(vals)
     #print(np.count_nonzero(vals))
     #[1, [6, 1, [3, 0, [4, 0, 1]]], [4, 0, [3, 0, 1]]]
-
     #[1, [3, [6, 1, 0], [4, [6, 1, 0], 1]], [3, 0, [4, 0, 1]]]
+    #[11, [6, [1, 1, [3, 0, [4, 0, 1]]], [4, 0, [3, 0, 1]]], [6, [1, 1, [3, 0, [4, 0, 1]]], 1]]
+    #[6, [1, 1, [3, 0, [4, 0, 1]]], [11, [4, 0, [3, 0, 1]], 1]]
+    #[11, [6, [1, 1, [3, 0, [4, 0, 1]]], [4, 0, [3, 0, 1]]], [6, [1, 1, [3, 0, [4, 0, 1]]], 1]]
