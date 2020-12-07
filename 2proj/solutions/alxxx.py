@@ -72,9 +72,9 @@ def treePruning(D, Y, tree):
     
     
 
-    pL = 
-    pR = 
-    K = 
+    #pL = 
+    #pR = 
+    #K = 
 
 
     left = treePruning(D, Yx1, tree[1])
