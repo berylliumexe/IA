@@ -7,26 +7,83 @@ Student id #77777
 
 import numpy as np
 
+def classify(T,data):
+    
+    data = np.array(data)
+    out = []
+    for el in data:
+        #print("el",el,"out",out,"\nT",T)
+        wT = T
+        for ii in range(len(el)):
+            #print(T[0],el[T[0]],T)
+            if el[wT[0]]==0:
+                if not isinstance(wT[1], list):
+                    out += [wT[1]]
+                    break
+                else:
+                    wT = wT[1]
+            else:
+                if not isinstance(wT[2], list):
+                    out += [wT[2]]
+                    break
+                else:
+                    wT = wT[2]
+    return np.array(out)
+
 def countNodes(tree):
     if isinstance(tree, (int, np.integer)):
         return 1
     else:
         return countNodes(tree[1]) + countNodes(tree[2])
 
-def treePruning(num, tree):
-    for i in range(num):
-        x = random.randint(2,pruneTree.countNodes(pruneTree.root)-1)
-        tempNode = Node()
-        tempNode = searchNode(newTree,x)
+def treePruning(D, Y, tree):
 
-        if(tempNode is not None):
-            tempNode.left = None
-            tempNode.right = None
-            tempNode.nodeType = "L"
-            if(tempNode.negativeCount >= tempNode.positiveCount):
-                tempNode.label = 0
-            else:
-                tempNode.label = 1
+    #select only Y's that satisfy tree[0]
+    #D(tree[0]) = 0
+    if isinstance(tree, (int, np.integer)):
+        return tree
+
+    if isinstance(tree[1], (int, np.integer)) and not isinstance(tree[2], (int, np.integer)):
+        return [tree[0], tree[1], smallerTree(tree[2])]
+
+    if isinstance(tree[2], (int, np.integer)) and not isinstance(tree[1], (int, np.integer)):
+        return [tree[0], smallerTree(tree[1]), tree[2]]
+
+    if isinstance(tree[1], (int, np.integer)) and isinstance(tree[1], (int, np.integer)):
+        return tree
+    
+    elems = Y[Y >= 0]
+    Na = np.count_nonzero(elems)
+    Nb = len(elems) - Na
+
+    idx = np.where(D.T[tree[0]] == 0)
+    Yx1 = np.empty(Y.shape, dtype=np.int32)
+    Yx1[:] = -1
+    np.put(Yx1, idx, np.take(Y, idx))
+
+    #elems = np.take(Y, idx)
+
+
+
+    idx = np.where(D.T[tree[0]] == 1)
+    Yx2 = np.empty(Y.shape, dtype=np.int32)
+    Yx2[:] = -1
+    np.put(Yx2, idx, np.take(Y, idx))
+    
+    
+
+    pL = 
+    pR = 
+    K = 
+
+
+    left = treePruning(D, Yx1, tree[1])
+    right = treePruning(D, Yx2, tree[2])
+
+
+
+    
+
 
 def smallerTree(tree):
     def check_equal(left, right):
@@ -64,22 +121,33 @@ def GI(attribute, examples):
     def I(p, n):
         return - p*np.log2(p) - n*np.log2(n) if p > 0 and n > 0 else 0
     
-    g = 0
+    ps = []
+    ns = []
+
     for v in np.unique(attribute):
         idxs = np.where(attribute == v)
         elems = np.take(examples, idxs)
-        #elems = elems[elems > -1]
+        elems = elems[elems >= 0]
         p = np.count_nonzero(elems)
         n = len(elems) - p
-        g += (len(elems)/len(examples)) * I(p, n)
+        ps.append(p)
+        ns.append(n)
 
-    return 1 - g
+    p = sum(ps)
+    n = sum(ns)
+
+    remainder = 0
+    for i, v in enumerate(np.unique(attribute)):
+        if (ps[i] + ns[i]) != 0:
+            remainder += ((ps[i] + ns[i])/(n+p)) * I(ps[i]/(ps[i]+ns[i]), ns[i]/(ps[i]+ns[i]))
+
+    return I(p/(p+n), n/(p+n)) - remainder
 
 
 def chooseAttribute(attributes, examples):
     test = [GI(att, examples) if att[0] >= 0 else -1 for att in attributes]
     #print(test)
-    return np.argmax(test), max(test)
+    return np.argmax(test)
 
 def DTL(examples, attributes, default):
     if (np.all(examples < 0)):
@@ -91,10 +159,7 @@ def DTL(examples, attributes, default):
     elif (np.all(attributes.reshape(-1) < 0)):
         return maxVals(examples)
     else:
-        best, val = chooseAttribute(attributes.T, examples)
-        #print(val)
-        #if val < 1:
-        #    return []
+        best = chooseAttribute(attributes.T, examples)
         tree = []
         tree += [best]
         for v in np.unique(attributes.T[best]):
@@ -116,20 +181,47 @@ def DTL(examples, attributes, default):
 
 #                      attributes, examples
 def createdecisiontree(D, Y, noise=False):
+    import random
     D = D.astype(np.int32)
     Y = Y.astype(np.int32)
+    saved_tree = DTL(Y, D, Y)
+    saved_tree = smallerTree(saved_tree)
+    saved_tree_error = np.mean(np.abs(classify(saved_tree, D) - Y))
+    NUM_TRIES = 30
+    
+    if noise:
+        for _ in range(NUM_TRIES):
+            SPLIT = random.randint(5,8)/10
+            idx = np.random.choice(np.arange(len(D)), int(len(D)*SPLIT), replace=False)
+            Dt = D[idx]
+            Yt = Y[idx]
+            tree = DTL(Yt, Dt, Yt)
+            tree = smallerTree(tree)
+            err = np.mean(np.abs(classify(tree, D) - Y))
+            if (err <= saved_tree_error and len(str(tree)) < len(str(saved_tree))):
+                print("Found a better tree!")
+                saved_tree = tree
+                saved_tree_error = err
 
-    tree = DTL(Y, D, Y)
-    tree = smallerTree(tree)
-    return tree
+    return saved_tree
 
 if __name__ == "__main__":
-    np.random.seed(13102020)
-    D = np.random.rand(1000,10)>0.5
-    Y = ((D[:,1] == 0) & (D[:,6] == 0)) | ((D[:,3] == 1) & (D[:,4] == 1)) 
+    #np.random.seed(13102020)
+    D = np.array([
+              [1,0,0,0],
+              [0,0,0,1],
+              [1,0,1,0],
+              [0,0,1,1],
+              [1,1,0,0],
+              [0,1,0,1],
+              [1,1,1,0],
+              [0,1,1,1]]) 
 
-    #tree = createdecisiontree(D, Y)
-    #print(tree)
+    datasetnumb = 26
+    Y = (np.array([datasetnumb%2,datasetnumb%4,datasetnumb%16,datasetnumb%8,datasetnumb%16,datasetnumb%8,datasetnumb%4,datasetnumb%2])>0).astype('int32') 
+
+    tree = createdecisiontree(D, Y)
+    print(tree)
     #print(len(str(tree)))
     print(countNodes([0, [1,0,0], [1,0,0]]))
     #print(att.T)
